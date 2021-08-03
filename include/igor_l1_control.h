@@ -75,7 +75,7 @@ class igor_l1_control
         // float omegaHatDot(float omegaHat_, Eigen::VectorXf X_tilda_, float adaptiveCntrl_);
 
         // void adaptation(Eigen::VectorXf igorState_);
-        void controlInput();
+        void controlInput(Eigen::VectorXf y);
         float eitaHatFn(float u, Eigen::VectorXf y);
         void lqr_controller(Eigen::VectorXf eig_vec);
 
@@ -83,6 +83,8 @@ class igor_l1_control
         Eigen::VectorXf V_hat_fn(Eigen::Vector2f y, Eigen::Vector2f y_tilde);
         Eigen::VectorXf y_hat_fn(float eitaHat, Eigen::Vector2f y_tilde);
         float constrain_float(float var, float max, float min);
+
+        void dynamicstest(float u);
 
 
         Eigen::VectorXf V_hat = Eigen::VectorXf(4); //V_hat
@@ -107,26 +109,28 @@ class igor_l1_control
         float thetaHat2 = 0;
         float thetaHat_d = 0; // Parameter estimate rate
         float thetaHat_d_last = 0; // Parameter estimate rate previous
-        int thetaGain = 1000;
-        int thetaMax = 100;
-        int thetaMin = -100;
+        int thetaGain = 500;
+        int thetaMax = 10;
+        int thetaMin = -10;
         float thetaEpsilon = 0.5;
 
         float sigmaHat = 0; // Sigma estimate
         float sigmaHat_d = 0; // Sigma estimate rate
         float sigmaHat_d_last = 0; // Sigma estimate rate previous
-        int sigmaGain = 1000;
-        int sigmaMax = 40;
-        int sigmaMin = -40;
+        int sigmaGain = 500;
+        int sigmaMax = 5;
+        int sigmaMin = -5;
         float sigmaEpsilon = 0.5;
         float omegaHat = 1;
         float omegaHat_d = 0;
         float omegaHat_d_last = 0;
-        int omegaGain = 1000;
-        int omegaMax = 10;
+        int omegaGain = 500;
+        int omegaMax = 100;
         int omegaMin = 0;
-        float omegaEpsilon = 0.1;
+        float omegaEpsilon = 0.5;
         // float adaptiveCntrl = 0; // Adaptive control inputs
+        Eigen::MatrixXf A = Eigen::MatrixXf(4,4);
+        Eigen::MatrixXf B = Eigen::MatrixXf(4,1);
         Eigen::MatrixXf Am = Eigen::MatrixXf(4,4);
         Eigen::MatrixXf Am_tr = Eigen::MatrixXf(4,4);
         Eigen::MatrixXf Bm = Eigen::MatrixXf(4,1);
@@ -160,7 +164,11 @@ class igor_l1_control
         Eigen::MatrixXf k_r = Eigen::MatrixXf(1,4); // declaring 1X6 Eigen matrix of datatype float
         Eigen::MatrixXf k_l = Eigen::MatrixXf(1,4); // declaring 1X6 Eigen matrix of datatype float
 
-        Eigen::Vector2f b{0,-0.4};
+        // Eigen::Vector2f b{0,-0.4};
+
+        Eigen::VectorXf X_dot_test = Eigen::VectorXf::Zero(4);
+        Eigen::VectorXf X_dot_test_last = Eigen::VectorXf::Zero(4);
+        Eigen::VectorXf X_test = Eigen::VectorXf::Zero(4); 
 
         // std::vector<decltype(thetaHat)::value_type> FilterOut;
        
@@ -200,9 +208,14 @@ class igor_l1_control
         float CoM_height = 0;
         float CoG_PitchAngle_filtered = 0;
         float eitaHat = 0;
-        float alpha = 25;
+        float alpha = 1;
         float Xg_Norm = 0;
         float L1_Input = 0;
+        
+        float eita_d2 = 0;
+        float eita_last = 0;
+        float eita_dd2 = 0;
+        float eita_d_last = 0;
 
 
         float igor_pos_x = 0;
@@ -213,11 +226,15 @@ class igor_l1_control
         float igor_center_vel = 0;
         float dt = 0.002;
 
-        
+        float b0 = 0.0111; 
+        float b1 = 0.0223; 
+        float b2 = 0.0111;
+        float a1 = -1.7181;
+        float a2 = 0.7653;        
         
         BiQuad bq1{0.0001416, 0.0002832, 0.0001416, -1.966, 0.967};
         BiQuad bq2{0.0001416, 0.0002832, 0.0001416, -1.966, 0.967};
-        BiQuad bq3{0.0, 0.09516, 0.0, -0.9048, 0.0};
+        BiQuad bq3{b0, b1, b2, a1, a2};
 
 
     public:
@@ -227,35 +244,41 @@ class igor_l1_control
 
         // Window size is 2*m+1
         const unsigned int m1 = 12;
-        const unsigned int m2 = 5;
-        const unsigned int m3 = 50;
+        const unsigned int m2 = 2;
+        const unsigned int m3 = 2;
+        const unsigned int m4 = 2;
         // Polynomial Order
         const unsigned int n1 = 0;
         const unsigned int n2 = 1;
         const unsigned int n3 = 2;
+        const unsigned int n4 = 0;
         // Initial Point Smoothing (ie evaluate polynomial at first point in the window)
         // Points are defined in range [-m;m]
         const int t1 = m1;
         const int t2 = m2;
         const int t3 = m3;
+        const int t4 = m4;
         // Derivate? 0: no derivation, 1: first derivative...
         const unsigned int d = 0;
         //double result;
         gram_sg::SavitzkyGolayFilterConfig sg_conf1{m1,t1,n1,d,0.002}; // filter configuration
         gram_sg::SavitzkyGolayFilterConfig sg_conf2{m2,t2,n2,1,0.002}; // filter configuration
         gram_sg::SavitzkyGolayFilterConfig sg_conf3{m3,t3,n3,2,0.002}; // filter configuration
+        gram_sg::SavitzkyGolayFilterConfig sg_conf4{m4,t4,n4,d,0.002}; // filter configuration
         
         gram_sg::SavitzkyGolayFilter pitchFilt{sg_conf1};
         gram_sg::SavitzkyGolayFilter pitch_vel_filt{sg_conf1};
         gram_sg::SavitzkyGolayFilter yaw_vel_filt{sg_conf1};
         gram_sg::SavitzkyGolayFilter doubleDerivativeFilt{sg_conf3};
         gram_sg::SavitzkyGolayFilter derivativeFilt{sg_conf2};
+        gram_sg::SavitzkyGolayFilter inputFilt{sg_conf4};
 
         boost::circular_buffer<double> pitchVelVector {boost::circular_buffer<double>((2*m1+1),0)};
         boost::circular_buffer<double> yawVelVector {boost::circular_buffer<double>((2*m1+1),0)};
         boost::circular_buffer<double> leanAngleVector {boost::circular_buffer<double>((2*m1+1),0)};
         boost::circular_buffer<double> doubleDerivativeVector {boost::circular_buffer<double>((2*m3+1),0)};
         boost::circular_buffer<double> derivativeVector {boost::circular_buffer<double>((2*m2+1),0)};
+        boost::circular_buffer<double> inputVector {boost::circular_buffer<double>((2*m4+1),0)};
 
 
 

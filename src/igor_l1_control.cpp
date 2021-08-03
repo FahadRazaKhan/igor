@@ -83,16 +83,16 @@ igor_l1_control::igor_l1_control(ros::NodeHandle* nodehandle):nh_(*nodehandle) /
     Am(1,3) = 1;
     // Am(1,4) = 1;
     // Am(1,5) = 0;
-    Am(2,0) = -0.9583;
-    Am(2,1) = 8.2658;
-    Am(2,2) = -2.7255;
-    Am(2,3) = -0.4056;
+    Am(2,0) = -0.6604;
+    Am(2,1) = 13.5280;
+    Am(2,2) = -2.5701;
+    Am(2,3) = 1.2709;
     // Am(2,4) = 0;
     // Am(2,5) = 1;
-    Am(3,0) = 1.2378;
-    Am(3,1) = -15.1312;
-    Am(3,2) = 3.5204;
-    Am(3,3) = 0.4768;
+    Am(3,0) = 0.8462;
+    Am(3,1) = -21.7878;
+    Am(3,2) = 3.2931;
+    Am(3,3) = -1.6694;
     // Am(3,4) = 0;
     // Am(3,5) = -26.4754;
     // Am(4,0) = 0;
@@ -114,14 +114,38 @@ igor_l1_control::igor_l1_control(ros::NodeHandle* nodehandle):nh_(*nodehandle) /
     // Bm(0,1) = 0;
     Bm(1,0) = 0;
     // Bm(1,1) = 0;
-    Bm(2,0) = 0.3030;
+    Bm(2,0) = 0.2696;
     // Bm(2,1) = 0;
-    Bm(3,0) = -0.3914;//9.9680;
+    Bm(3,0) = -0.3454;//9.9680;
     // Bm(3,1) = 1;//9.9680;
     // Bm(4,0) = 1;//18.6288;
     // Bm(4,1) = -1;//-18.6288;
     // Bm(5,0) = -1;//-19.5930;
     // Bm(5,1) = -1;//-19.5930; 
+
+    A(0,0) = 0;
+    A(0,1) = 0;
+    A(0,2) = 1;
+    A(0,3) = 0;
+    A(1,0) = 0;
+    A(1,1) = 0;
+    A(1,2) = 0;
+    A(1,3) = 1;
+    A(2,0) = 0;
+    A(2,1) = 8.2291;
+    A(2,2) = 0;
+    A(2,3) = 0;
+    A(3,0) = 0;
+    A(3,1) = -13.8686;
+    A(3,2) = 0;
+    A(3,3) = 0;
+
+    B(0,0) = 0;
+    B(1,0) = 0;
+    B(2,0) = 0.2701;
+    B(3,0) = -0.3154;
+
+
 
     Cm(0,0) = 1; 
     Cm(0,1) = 0;
@@ -135,82 +159,84 @@ igor_l1_control::igor_l1_control(ros::NodeHandle* nodehandle):nh_(*nodehandle) /
     Cm_tr = Cm.transpose();
     
 
-    H(0,0) = 0.3842;
-    H(0,1) = -0.4864;
-    H(1,0) = -0.4864;
-    H(1,1) = 0.6158;
-    H(2,0) = 0.0778;
-    H(2,1) = -0.0985;
-    H(3,0) = 0.8607;
-    H(3,1) = -1.0897;
+    H(0,0) = 0.3872;
+    H(0,1) = -0.4871;
+    H(1,0) = -0.4871;
+    H(1,1) = 0.6128;
+    H(2,0) = -2.8743;
+    H(2,1) = 3.6161;
+    H(3,0) = 4.6631;
+    H(3,1) = -5.8665;
 
-    Av(0,0) = -0.0540;
-    Av(0,1) = -0.0187;
-    Av(0,2) = 0.0006;
-    Av(0,3) = 0.0005;
-    Av(1,0) = -0.0189;
-    Av(1,1) = -0.0448;
-    Av(1,2) = 0.0005;
-    Av(1,3) = 0.0004;
-    Av(2,0) = 2.7135;
-    Av(2,1) = 2.1000;
-    Av(2,2) = -0.0028;
-    Av(2,3) = -0.0003;
-    Av(3,0) = -5.1140;
-    Av(3,1) = -3.9659;
-    Av(3,2) = 0.0027;
-    Av(3,3) = 0.0016;
+    Av(0,0) = -19.2679;
+    Av(0,1) = -12.8895;
+    Av(0,2) = 0.6128;
+    Av(0,3) = 0.4871;
+    Av(1,0) = -12.9153;
+    Av(1,1) = -13.2333;
+    Av(1,2) = 0.4871;
+    Av(1,3) = 0.3872;
+    Av(2,0) = 450.7897;
+    Av(2,1) = 356.6743;
+    Av(2,2) = 0.3042;
+    Av(2,3) = -2.3452;
+    Av(3,0) = -867.9724;
+    Av(3,1) = -686.8016;
+    Av(3,2) = -1.3700;
+    Av(3,3) = 4.1971;
 
-    Av = 1000*Av;
+    Av = 1*Av;
 
-    PvInv(0,0) = 2.2223;
-    PvInv(0,1) = -2.8699;
-    PvInv(0,2) = -0.3171;
-    PvInv(0,3) = -0.1953;
-    PvInv(1,0) = -2.8699;
-    PvInv(1,1) = 3.7104;
-    PvInv(1,2) = 0.3053;
-    PvInv(1,3) = 0.4414;
-    PvInv(2,0) = -0.3171;
-    PvInv(2,1) = 0.3053;
-    PvInv(2,2) = 3.3131;
-    PvInv(2,3) = -5.8471;
-    PvInv(3,0) = -0.1953;
-    PvInv(3,1) = 0.4414;
-    PvInv(3,2) = -5.8471;
-    PvInv(3,3) = 10.7542;
+    PvInv(0,0) = 0.3401;
+    PvInv(0,1) = -0.4315;
+    PvInv(0,2) = 0.0019;
+    PvInv(0,3) = -0.0140;
+    PvInv(1,0) = -0.4315;
+    PvInv(1,1) = 0.5488;
+    PvInv(1,2) = -0.0167;
+    PvInv(1,3) = 0.0450;
+    PvInv(2,0) = 0.0019;
+    PvInv(2,1) = -0.0167;
+    PvInv(2,2) = 0.1709;
+    PvInv(2,3) = -0.3265;
+    PvInv(3,0) = -0.0140;
+    PvInv(3,1) = 0.0450;
+    PvInv(3,2) = -0.3265;
+    PvInv(3,3) = 0.6250;
+
+    
 
 
-    Az(0,0) = -2.3262;
-    Az(0,1) = -1.0003;
-    Az(1,0) = 12.1303;
-    Az(1,1) = -2.2309;
+    Az(0,0) = -2.2759;
+    Az(0,1) = -1.0002;
+    Az(1,0) = 0.8862;
+    Az(1,1) = -4.2241;
 
     Bz(0,0) = 0;
-    Bz(1,0) = -0.4950;
+    Bz(1,0) = 0.4382;
 
-    Cz(0,0) = -2.3751;
+    Cz(0,0) = 2.3806;
     Cz(0,1) = 0;
     
     Dz(0,0) = 0;
 
-    Bhat(0,0) = -0.6069;
-    Bhat(1,0) = 0.7684;
-    Bhat(2,0) = -0.1229;
-    Bhat(3,0) = -1.3597;
+    Bhat(0,0) = -0.5948;
+    Bhat(1,0) = 0.7483;
+    Bhat(2,0) = 4.4156;
+    Bhat(3,0) = -7.1635;
 
     Bhat_tr = Bhat.transpose();
 
-    Kv(0,0) = -0.0540;
-    Kv(0,1) = -0.0187;
-    Kv(1,0) = -0.0189;
-    Kv(1,1) = -0.0448;
-    Kv(2,0) = 2.7144;
-    Kv(2,1) = 2.0918;
-    Kv(3,0) = -5.1153;
-    Kv(3,1) = -3.9508;
+    Kv(0,0) = -19.2679;
+    Kv(0,1) = -12.8895;
+    Kv(1,0) = -12.9153;
+    Kv(1,1) = -13.2333;
+    Kv(2,0) = 451.4501;
+    Kv(2,1) = 343.1463;
+    Kv(3,0) = -868.8186;
+    Kv(3,1) = -665.0138;
 
-    Kv = 1000*Kv;
+    Kv = 1*Kv;
 
 
     // P(0,0) = 1.6089;
@@ -262,10 +288,10 @@ igor_l1_control::igor_l1_control(ros::NodeHandle* nodehandle):nh_(*nodehandle) /
     // Am_Inv = Am.completeOrthogonalDecomposition().pseudoInverse();
     // Kg = (C*Am_Inv*Bm).completeOrthogonalDecomposition().pseudoInverse(); // Feedforward gain
     // Kg = -1*Kg;
-    Kg(0,0) = 5;
+    Kg(0,0) = 1;
     Kg(0,1) = 2;
 
-    PlotingVector.data.resize(3); // Resizing std::msg array
+    PlotingVector.data.resize(4); // Resizing std::msg array
 
     k_r(0,0)= k_l(0,0) = 4*(-0.7071); // Forward position gain -ve
     k_r(0,1)= 1.2*(-16.2331); // Pitch gain -ve
@@ -380,6 +406,7 @@ void igor_l1_control::CoG_callback(const geometry_msgs::PointStamped::ConstPtr &
     // std::cout << "Kv:" << std::endl << Kv << std::endl;
     std::cout << "e_y:" << std::endl << e_y << std::endl;
     std::cout << "Uz:" << std::endl << Uz << std::endl;
+    std::cout << "Xg_hat:" << std::endl << Xg_hat << std::endl;
     
 
 
@@ -423,14 +450,17 @@ void igor_l1_control::odom_callback(const nav_msgs::Odometry::ConstPtr &msg)
    
 
     igorState(0) = igor_center_position;
-    y(0) = igor_center_position;
+    y(0) = 0*igor_center_position;
     igorState(2) = floorf(igor_center_vel*1000)/1000;
 
     //ROS_INFO("Igor Position: %f",igor_center_position);
 
+    // PlotingVector.data[2] = -y(0);
+    // PlotingVector.data[3] = y(1);
+
     // this->adaptation(igorState);
     this->lqr_controller(igorState);
-    this->controlInput();
+    this->controlInput(y);
     plotPublisher.publish(PlotingVector);
 
 }// End of odom_callback
@@ -582,7 +612,7 @@ void igor_l1_control::odom_callback(const nav_msgs::Odometry::ConstPtr &msg)
 // }
 
 
-void igor_l1_control::controlInput(){
+void igor_l1_control::controlInput(Eigen::VectorXf y){
 
     ROS_INFO("In controlInput");
     
@@ -596,21 +626,37 @@ void igor_l1_control::controlInput(){
 
     float eita_dd = doubleDerivativeFilt.filter(doubleDerivativeVector);
     float eita_d = derivativeFilt.filter(derivativeVector);
-    float eita_filtered = 0.8503*(-eita_dd-(4.557*eita_d)-(17.32*eita));
+    float eita_filtered = 0.9588*(-eita_dd-(6.5*eita_d)-(10.5*eita));
 
-    // PlotingVector.data[0] = eita;
-    // PlotingVector.data[1] = eita_filtered;
+    eita_d2 = (eita-eita_last)/dt;
+    eita_last = eita;
+
+    eita_dd2 = (eita_d2-eita_d_last)/dt;
+    eita_d_last = eita_d2;
+
+    // PlotingVector.data[3] = eita_dd;
+    // PlotingVector.data[0] = eita_filtered;
     
     float filterInput = (rg(0)-eita_filtered);
-    
     L1_Input = 1*bq3.step(filterInput);
+    inputVector.push_back(L1_Input);
+    L1_Input = inputFilt.filter(inputVector);
+    L1_Input = this->constrain_float(L1_Input,30,-30);
     // float controlInput_2 = bq2.step(filterInput(1));
     // Eigen::Vector2f controlInput;
     // controlInput(0) = -6*controlInput_1;
     // controlInput(1) = -6*controlInput_2;
 
-    //PlotingVector.data[0] = filterInput;
-    PlotingVector.data[1] = L1_Input;
+
+    // PlotingVector.data[0] = filterInput;
+    PlotingVector.data[2] = L1_Input;
+
+    trq_r.data = L1_Input;
+
+    Lwheel_pub.publish(trq_r);
+    Rwheel_pub.publish(trq_r);
+
+    // this->dynamicstest(L1_Input);
     
     // return (controlInput_1);
 
@@ -619,20 +665,22 @@ void igor_l1_control::controlInput(){
 float igor_l1_control::eitaHatFn(float u, Eigen::VectorXf y){
 
     Xu_dot = (Az*Xu)+(Bz*u);
+    Uz = (Cz*Xu)+(Dz*u);
+    Xg_hat << Xv_hat,Xu;
+    Xg_Norm = Xg_hat.lpNorm<Eigen::Infinity>();
+    e_y = Bhat_tr*Cm_tr*Py*Y_tilda;
+    eitaHat = omegaHat*Uz(0) + thetaHat*Xg_Norm + sigmaHat;
+    
     Xu(0) = this->trapezoidal_integration(Xu(0),Xu_dot(0),dt,Xu_dot_last(0));
     Xu(1) = this->trapezoidal_integration(Xu(1),Xu_dot(1),dt,Xu_dot_last(1));  
     
-    Uz = (Cz*Xu)+(Dz*u);
+    
 
     Xv_hat = V_hat + H*y;
     Y_tilda = y_hat-y;
     V_hat = this->V_hat_fn(y,Y_tilda);
     y_hat = this->y_hat_fn(eitaHat,Y_tilda);
     
-    Xg_hat << Xv_hat,Xu;
-    Xg_Norm = Xg_hat.lpNorm<Eigen::Infinity>();
-
-    e_y = Bhat_tr*Cm_tr*Py*Y_tilda;
 
     sigmaHat_d = this->projection_operator(sigmaHat,-sigmaGain*e_y(0),sigmaEpsilon,sigmaMax,sigmaMin);
     thetaHat_d = this->projection_operator(thetaHat,-thetaGain*Xg_Norm*e_y(0),thetaEpsilon,thetaMax,thetaMin);
@@ -650,9 +698,8 @@ float igor_l1_control::eitaHatFn(float u, Eigen::VectorXf y){
 
     // PlotingVector.data[0] = thetaHat;
     // PlotingVector.data[1] = sigmaHat;
-    PlotingVector.data[2] = omegaHat;
+    // PlotingVector.data[3] = omegaHat;
 
-    eitaHat = omegaHat*Uz(0) + thetaHat*Xg_Norm + sigmaHat;
 
     return eitaHat;
 
@@ -666,6 +713,9 @@ Eigen::VectorXf igor_l1_control::V_hat_fn(Eigen::Vector2f y, Eigen::Vector2f y_t
     V_hat(2) = this->trapezoidal_integration(V_hat(2),V_hat_d(2),dt,V_hat_d_last(2));
     V_hat(3) = this->trapezoidal_integration(V_hat(3),V_hat_d(3),dt,V_hat_d_last(3));
 
+    // PlotingVector.data[0] = Xv_hat(2);
+    // PlotingVector.data[1] = Xv_hat(3);
+
     return V_hat;
 
 }
@@ -675,6 +725,9 @@ Eigen::VectorXf igor_l1_control::y_hat_fn(float eitaHat, Eigen::Vector2f y_tilde
     y_hat_dot = (-alpha*y_tilde)+(Cm*Am*Xv_hat)+(Cm*Bhat*eitaHat);
     y_hat(0) = this->trapezoidal_integration(y_hat(0),y_hat_dot(0),dt,y_hat_dot_last(0));
     y_hat(1) = this->trapezoidal_integration(y_hat(1),y_hat_dot(1),dt,y_hat_dot_last(1));
+
+    // PlotingVector.data[0] = y_hat(0);
+    // PlotingVector.data[1] = y_hat(1);
 
     return y_hat;
 
@@ -690,26 +743,26 @@ void igor_l1_control::lqr_controller (Eigen::VectorXf vec) //LQR State-feedback 
         
         //igor_knee_control::ref_update();
 
-        trq_r.data =  (k_r*(-vec)).value(); // taking the scalar value of the eigen-matrx
+        // trq_r.data =  (k_r*(-vec)).value(); // taking the scalar value of the eigen-matrx
       
         // trq_l.data =  (k_l*(refState-vec)).value();
         
 
-        Lwheel_pub.publish(trq_r); // Publish left wheel torque
-        Rwheel_pub.publish(trq_r); // Publish right wheel torque
+        // Lwheel_pub.publish(trq_r); // Publish left wheel torque
+        // Rwheel_pub.publish(trq_r); // Publish right wheel torque
 
     
 
        
     }
     else if (igorState(1)<= -1.4 || igorState(1) >= 1.4){
-        trq_r.data = 0;
-        trq_l.data = 0;
-        Lwheel_pub.publish(trq_r);
-        Rwheel_pub.publish(trq_r);
+        // trq_r.data = 0;
+        // trq_l.data = 0;
+        // Lwheel_pub.publish(trq_r);
+        // Rwheel_pub.publish(trq_r);
     }
 
-    PlotingVector.data[0] = trq_r.data;
+    PlotingVector.data[0] = (k_r*(-vec)).value();
 
     
 } // End of lqr_controller
@@ -722,6 +775,21 @@ float igor_l1_control::trapezoidal_integration(float yLast, float y_dot, float d
     return y1;
 
 } // End trapezoidal_integration
+
+void igor_l1_control::dynamicstest(float u){
+    X_dot_test = A*X_test + B*u;
+    X_test(0) = this->trapezoidal_integration(X_test(0),X_dot_test(0),dt,X_dot_test_last(0));
+    X_test(1) = this->trapezoidal_integration(V_hat(1),X_dot_test(1),dt,X_dot_test_last(1));
+    X_test(2) = this->trapezoidal_integration(V_hat(2),X_dot_test(2),dt,X_dot_test_last(2));
+    X_test(3) = this->trapezoidal_integration(V_hat(3),X_dot_test(3),dt,X_dot_test_last(3));
+
+    // PlotingVector.data[0] =  X_test(0);
+    // PlotingVector.data[1] =  X_test(1);
+
+    // std::cout << "X_dot_test:" << std::endl << X_dot_test << std::endl;
+    // std::cout << "X_test:" << std::endl << X_test << std::endl;
+    
+}
 
 
 // float igor_l1_control::Proj2(float theta_, float y_, float Pm_, float PBar_, float epsilon_){
