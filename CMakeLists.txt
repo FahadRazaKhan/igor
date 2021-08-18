@@ -228,7 +228,7 @@ target_link_libraries(igor_jointstate_node
    ${catkin_LIBRARIES})
 
 target_link_libraries(igorHW_controller_node
-   ${catkin_LIBRARIES} gram_savitzky_golay)
+   ${catkin_LIBRARIES} gram_savitzky_golay BiQuad_lib)
    
 target_link_libraries(igor_l1_controller_node
    ${catkin_LIBRARIES} gram_savitzky_golay BiQuad_lib)

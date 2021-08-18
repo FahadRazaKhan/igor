@@ -31,6 +31,7 @@
 #include <string>
 #include <gram_savitzky_golay/gram_savitzky_golay.h> //gram_savitzky_golay lib
 #include <boost/circular_buffer.hpp>
+#include "BiQuad.h"
 
 hebi::GroupCommand* kneeGroupCommand;
 hebi::GroupCommand* hipGroupCommand;
@@ -47,6 +48,13 @@ ros::WallDuration wall_duration;
 void CT_controller(Eigen::VectorXf vec); // Function prototype, its declaration
 void LQR_controller(Eigen::VectorXf vec);
 void ff_fb_controller();
+void augmented_controller(Eigen::VectorXf eig_vec);
+float L1ControlInput(Eigen::VectorXf y);
+Eigen::VectorXf stateEst(Eigen::VectorXf stateEst_, Eigen::VectorXf igorState_, Eigen::Vector2f thetaHat_, float sigmaHat_, float omegaHat_, float adaptiveCntrl_);
+float trapezoidal_integration(float yLast, float y_dot, float dt, float &y_dot_last);
+float constrain_float(float var, float max, float min);
+float projection_operator(float theta, float phi, float epsilon, float theta_max, float theta_min);// Projection operator
+
 void ref_update();
 
 
@@ -101,6 +109,51 @@ Eigen::Vector3d Ev;
 Eigen::Vector3d velocities{0,0,0};
 Eigen::MatrixXd Kp = Eigen::MatrixXd(3,3);
 Eigen::MatrixXd Kv = Eigen::MatrixXd(3,3);
+
+Eigen::Vector2f y{0,0}; // Real system output for L1 controller
+Eigen::VectorXf X_hat =  Eigen::VectorXf::Zero(2); //X_hat
+Eigen::VectorXf X_hat_d = Eigen::VectorXf::Zero(2); //X_hat_dot
+Eigen::VectorXf X_hat_d_last = Eigen::VectorXf::Zero(2); 
+Eigen::Vector2f X_tilda{0,0}; // Output error
+Eigen::MatrixXf P = Eigen::MatrixXf(2,2);
+Eigen::MatrixXf Am = Eigen::MatrixXf(2,2);
+Eigen::Vector2f b{0,-0.4};
+
+Eigen::Vector2f thetaHat{0,0}; // Parameter estimate
+Eigen::Vector2f thetaHat_d {0,0}; // Parameter estimate rate
+Eigen::Vector2f thetaHat_d_last {0,0}; // Parameter estimate rate previous
+int thetaGain = 10000;
+int thetaMax = 50;
+int thetaMin = -50;
+float thetaEpsilon = 0.5;
+
+float sigmaHat = 0; // Sigma estimate
+float sigmaHat_d = 0; // Sigma estimate rate
+float sigmaHat_d_last = 0; // Sigma estimate rate previous
+int sigmaGain = 10000;
+int sigmaMax = 20;
+int sigmaMin = -20;
+float sigmaEpsilon = 0.5;
+
+float omegaHat = 1;
+float omegaHat_d = 0;
+float omegaHat_d_last = 0;
+int omegaGain = 10000;
+int omegaMax = 10;
+int omegaMin = 0;
+float omegaEpsilon = 0.1;
+
+float L1_Input = 0;
+float Kg = -375;
+float rg = 0;
+float dt = 0.002;
+
+float b0 = 0.0; 
+float b1 = 0.09516; 
+float b2 = 0.0;
+float a1 = -0.9048;
+float a2 = 0.0;
+BiQuad bq3{b0, b1, b2, a1, a2};      
 
 // CT gains for ff_fb_controller
 float Kp1 = -7*1.3; // Linear postion gain

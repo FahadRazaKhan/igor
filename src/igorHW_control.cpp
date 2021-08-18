@@ -93,18 +93,19 @@ void odom_callback(const nav_msgs::Odometry::ConstPtr &msg)
     igorState(5) = basePitchVelocity;
 
     // Publishing states for ploting
-    plot_vector.data[0] = igorState(0); // Forward position
+    //plot_vector.data[0] = igorState(0); // Forward position
     //plot_vector.data[1] = igorState(1); // Yaw
-    plot_vector.data[2] = igorState(1); // Yaw
+    //plot_vector.data[2] = igorState(1); // Yaw
     //plot_vector.data[3] = igorState(3); // Forward Velocity
-    plot_vector.data[4] = igorState(2); // Pitch
-    plot_vector.data[6] = igorState(3); // Forward Velocity
-    plot_vector.data[9] = baseY;
+    plot_vector.data[0] = igorState(2); // Pitch
+    //plot_vector.data[6] = igorState(3); // Forward Velocity
+    //plot_vector.data[9] = baseY;
     //ROS_INFO("Pitch angle %f",igorState(2));
 
     //CT_controller(igorState); // Calling CT controller
-    //LQR_controller(igorState); // Calling LQR controller
-    ff_fb_controller();
+    // LQR_controller(igorState); // Calling LQR controller
+    // ff_fb_controller(); // Calling Feedforward-Feedback controller
+    augmented_controller(igorState); // Calling Augmented Adaptive controller
 
 } // End of odom_callback
 
@@ -116,17 +117,17 @@ void ref_update(){
     // Reference states
     if (wall_duration.sec>=15){
         //plot_vector.data[1] = refState(0) = 0.5*(sin(0.7*ros::Time::now().toSec())); // Center Position
-        plot_vector.data[1] = refState(0) = 0.5*0; // Center Position  
-        plot_vector.data[3] = refState(1) = 0*(cos(0.3*ros::Time::now().toSec())); // Yaw
-        plot_vector.data[5] = refState(2) = -0.004*0; // Pitch
+        refState(0) = 0.5*0; // Center Position  
+        refState(1) = 0*(cos(0.3*ros::Time::now().toSec())); // Yaw
+        refState(2) = -0.004*0; // Pitch
         refState(3) = 0.0; // Center velocity
         refState(4) = 0.0; // Yaw velocity
         refState(5) = 0.0; // Pitch velocity
     }
     else{
-        plot_vector.data[1] = refState(0) = 0.0;
-        plot_vector.data[3] = refState(1) = 0.0;
-        plot_vector.data[5] = refState(2) = 0.0; // Pitch
+        refState(0) = 0.0;
+        refState(1) = 0.0;
+        refState(2) = 0.0; // Pitch
         refState(3) = 0.0; // Center velocity
         refState(4) = 0.0; // Yaw velocity
         refState(5) = 0.0; // Pitch velocity
@@ -223,9 +224,7 @@ void LQR_controller(Eigen::VectorXf vec)
         
     lqr_trq_l =  (k_l*(refState-vec)).value();
 
-    // ROS_INFO("Right LQR Torque %f", lqr_trq_r);
-    // ROS_INFO("Left LQR Torque %f", lqr_trq_l);
-    // ROS_INFO("Yaw error %f", (refState(1)-vec(1)));
+
 
     // (*wheelGroupCommand).clear(); // Clearing the previous group commands
     // (*wheelGroupCommand)[1].actuator().effort().set(-lqr_trq_r); // Effort command to Right wheel
@@ -241,6 +240,131 @@ void LQR_controller(Eigen::VectorXf vec)
 
 }// End of LQR controller
 
+void augmented_controller(Eigen::VectorXf eig_vec){
+    ROS_INFO("In augmented_controller");
+    y(0) = eig_vec(2); // Pitch angle
+    y(1) = eig_vec(5); // Pitch rate
+    LQR_controller(igorState); // Calling LQR controller
+    float Ua = L1ControlInput(y); // Adaptive control
+
+    trq_l = (lqr_trq_l*0)+Ua;
+    trq_r = (lqr_trq_r*0)+Ua;
+
+    (*wheelGroupCommand).clear(); // Clearing the previous group commands
+    (*wheelGroupCommand)[1].actuator().effort().set(-trq_r); // Effort command to Right wheel
+    (*wheelGroupCommand)[0].actuator().effort().set(trq_l); // Effort command to Left wheel
+    wheel_group->sendCommand(*wheelGroupCommand); // Send commands
+
+    // plot_vector.data[0] = trq_r;
+    plot_vector.data[1] = X_tilda(0);
+    plot_vector.data[2] = Ua;
+
+    array_publisher.publish(plot_vector);
+    
+
+
+}// End of augmented_controller
+
+float L1ControlInput(Eigen::VectorXf y){
+
+    ROS_INFO("In L1ControlInput");
+
+    X_tilda = X_hat-y;
+    std::cout << "X_tilda: " << X_tilda << std::endl;
+
+    X_hat = stateEst(X_hat, y, thetaHat, sigmaHat, omegaHat,L1_Input);
+
+    Eigen::Vector2f phiTheta = X_tilda.transpose()*P*b*y;
+    float phiSigma = (X_tilda.transpose()*P*b);
+    float phiOmega = (X_tilda.transpose()*P*b);
+    phiOmega = phiOmega*L1_Input;
+
+    sigmaHat_d = projection_operator(sigmaHat,-sigmaGain*phiSigma,sigmaEpsilon,sigmaMax,sigmaMin);
+    thetaHat_d(0) = projection_operator(thetaHat(0),-thetaGain*phiTheta(0),thetaEpsilon,thetaMax,thetaMin);
+    thetaHat_d(1) = projection_operator(thetaHat(1),-thetaGain*phiTheta(1),thetaEpsilon,thetaMax,thetaMin);
+    omegaHat_d = projection_operator(omegaHat,-omegaGain*phiOmega,omegaEpsilon,omegaMax,omegaMin);
+
+    
+    sigmaHat = trapezoidal_integration(sigmaHat,sigmaHat_d,dt,sigmaHat_d_last);
+    thetaHat(0) = trapezoidal_integration(thetaHat(0),thetaHat_d(0),dt,thetaHat_d_last(0));
+    thetaHat(1) = trapezoidal_integration(thetaHat(1),thetaHat_d(1),dt,thetaHat_d_last(1));
+    omegaHat = trapezoidal_integration(omegaHat,omegaHat_d,dt,omegaHat_d_last);
+    
+    // Constraining variables to their limits
+    sigmaHat = constrain_float(sigmaHat,sigmaMax,sigmaMin);
+    thetaHat(0) = constrain_float(thetaHat(0),thetaMax,thetaMin);
+    thetaHat(1) = constrain_float(thetaHat(1),thetaMax,thetaMin);
+    omegaHat = constrain_float(omegaHat,omegaMax,omegaMin);
+    
+    rg = Kg*refState(2); // Pitch angle
+
+   
+    float eita = (omegaHat*L1_Input) + (thetaHat.transpose()*y)+ sigmaHat;
+    float filterInput = (eita-rg);
+
+   
+    
+    L1_Input = -1*bq3.step(filterInput);
+    
+    return (L1_Input);
+
+ } // End of L1Controller
+
+ Eigen::VectorXf stateEst(Eigen::VectorXf stateEst_, Eigen::VectorXf igorState_, Eigen::Vector2f thetaHat_, float sigmaHat_,float omegaHat_, float adaptiveCntrl_){
+
+    //ROS_INFO("In stateEst");
+    float igorStateNorm = igorState_.lpNorm<Eigen::Infinity>(); // Infinity Norm
+    X_hat_d = (Am*stateEst_) + b*((omegaHat_*adaptiveCntrl_)+ thetaHat_.transpose()*igorState_ + sigmaHat_);
+
+    X_hat(0) = trapezoidal_integration(X_hat(0),X_hat_d(0),dt,X_hat_d_last(0));
+    X_hat(1) = trapezoidal_integration(X_hat(1),X_hat_d(1),dt,X_hat_d_last(1));
+    return X_hat;
+
+} // End of State Predictor
+
+float trapezoidal_integration(float yLast, float y_dot, float dt, float &y_dot_last){
+
+    float y1 = yLast + (dt/2)*(y_dot_last+y_dot);
+    y_dot_last = y_dot;
+
+    return y1;
+
+} // End trapezoidal_integration
+
+float constrain_float(float var, float max, float min){
+
+    if (var>max)
+    {
+        return max;
+    }
+
+    else if (var<min)
+    {
+        return min;
+    }
+
+    return var;
+} // End of constrain_float
+
+float projection_operator(float Theta, float phi, float epsilon, float th_max, float th_min)
+{
+
+    // Calculate convex function
+    // Nominal un-saturated value is above zero line on a parabolic curve
+    // Steepness of curve is set by epsilon
+    float f_diff2 = (th_max-th_min)*(th_max-th_min);
+    float f_theta = (-4*(th_min - Theta) * (th_max - Theta))/(epsilon*f_diff2);
+    float f_theta_dot = (4*(th_min + th_max - (2*Theta)))/(epsilon*f_diff2);
+
+    float projection_out = phi;
+
+    if (f_theta <= 0 && f_theta_dot*phi < 0)
+    {
+        projection_out = phi*(f_theta+1); 
+    }
+
+    return projection_out;
+} // End of Projection operator
 
 void ff_fb_controller() // feedforward+feedback controller
 {
@@ -253,14 +377,14 @@ void ff_fb_controller() // feedforward+feedback controller
     trq_l = lqr_trq_l+CT_trq_l;
     trq_r = lqr_trq_r+CT_trq_r;
 
-    (*wheelGroupCommand).clear(); // Clearing the previous group commands
-    (*wheelGroupCommand)[1].actuator().effort().set(-trq_r); // Effort command to Right wheel
-    (*wheelGroupCommand)[0].actuator().effort().set(trq_l); // Effort command to Left wheel
-    wheel_group->sendCommand(*wheelGroupCommand); // Send commands
+    // (*wheelGroupCommand).clear(); // Clearing the previous group commands
+    // (*wheelGroupCommand)[1].actuator().effort().set(-trq_r); // Effort command to Right wheel
+    // (*wheelGroupCommand)[0].actuator().effort().set(trq_l); // Effort command to Left wheel
+    // wheel_group->sendCommand(*wheelGroupCommand); // Send commands
 
-    plot_vector.data[8] = trq_l; // left wheel torque
-    plot_vector.data[7] = trq_r; // right wheel torque
-    array_publisher.publish(plot_vector);
+    // plot_vector.data[8] = trq_l; // left wheel torque
+    // plot_vector.data[7] = trq_r; // right wheel torque
+    // array_publisher.publish(plot_vector);
 
     return;
 
@@ -415,40 +539,36 @@ int main(int argc, char **argv)
 
 
     // LQR gains for ff_fb_controller
-    k_r(0,0)= k_l(0,0) = 1*(-0.7071); // Forward position gain -ve
-    k_r(0,1)= 1*(0.7071); // Yaw gain +ve
-    k_r(0,2)= k_l(0,2) = 1*(-16.2331); // Pitch gain -ve
-    k_r(0,3)= k_l(0,3) = 0.65*(-4.8849); // Forward speed gain -ve
-    k_r(0,4)= 0.5*(0.4032); // Yaw speed gain +ve
-    k_r(0,5)= k_l(0,5)= 1.1*(-3.1893); // Pitch speed gain -ve
-    k_l(0,1)= -1*k_r(0,1);
-    k_l(0,4)= -1*k_r(0,4);
-
-    // LQR gains
-    // k_r(0,0)= k_l(0,0) = 4*(-0.7071); // Forward position gain -ve
-    // k_r(0,1)= 2*(0.7071); // Yaw gain +ve
-    // k_r(0,2)= k_l(0,2) = 1.2*(-16.2331); // Pitch gain -ve
-    // k_r(0,3)= k_l(0,3) = (-4.8849); // Forward speed gain -ve
-    // k_r(0,4)= (0.4032); // Yaw speed gain +ve
-    // k_r(0,5)= k_l(0,5)= 1.5*(-3.1893); // Pitch speed gain -ve
+    // k_r(0,0)= k_l(0,0) = 1*(-0.7071); // Forward position gain -ve
+    // k_r(0,1)= 1*(0.7071); // Yaw gain +ve
+    // k_r(0,2)= k_l(0,2) = 1*(-16.2331); // Pitch gain -ve
+    // k_r(0,3)= k_l(0,3) = 0.65*(-4.8849); // Forward speed gain -ve
+    // k_r(0,4)= 0.5*(0.4032); // Yaw speed gain +ve
+    // k_r(0,5)= k_l(0,5)= 1.1*(-3.1893); // Pitch speed gain -ve
     // k_l(0,1)= -1*k_r(0,1);
     // k_l(0,4)= -1*k_r(0,4);
 
+    // LQR gains
+    k_r(0,0)= k_l(0,0) = 4*(-0.7071); // Forward position gain -ve
+    k_r(0,1)= 2*(0.7071); // Yaw gain +ve
+    k_r(0,2)= k_l(0,2) = 1.2*(-16.2331); // Pitch gain -ve
+    k_r(0,3)= k_l(0,3) = (-4.8849); // Forward speed gain -ve
+    k_r(0,4)= (0.4032); // Yaw speed gain +ve
+    k_r(0,5)= k_l(0,5)= 1.5*(-3.1893); // Pitch speed gain -ve
+    k_l(0,1)= -1*k_r(0,1);
+    k_l(0,4)= -1*k_r(0,4);
 
-    // LQR testing
-    // k_r(0,0) = 2*-0.5991; // Forward position gain -ve
-    // k_l(0,0) = 2*-0.8007;
-    // k_r(0,1) = 1.5*0.8007; // Yaw gain +ve
-    // k_l(0,1) = 1.5*-0.5991;
-    // k_r(0,2) = -15.3053; // Pitch gain -ve
-    // k_l(0,2) = -16.2986;
-    // k_r(0,3) = 0.85*-4.5527; // Forward speed gain -ve
-    // k_l(0,3) = 0.85*-4.4862;
-    // k_r(0,4) = 0.3549; // Yaw speed gain +ve
-    // k_l(0,4) = -0.5038;
-    // k_r(0,5) = -3.0913; // Pitch speed gain -ve
-    // k_l(0,5) = -3.2145;
-    
+    // L1 Adaptive parameters
+    P(0,0) = 1.1519;
+    P(0,1) = 0.0020;
+    P(1,0) = 0.0020;
+    P(1,1) = 0.0012;
+   
+
+    Am(0,0) = 0;
+    Am(0,1) = 1;
+    Am(1,0) = -250;
+    Am(1,1) = -430;
     
 
     ros::Duration(2).sleep(); // Sleep for 2 seconds

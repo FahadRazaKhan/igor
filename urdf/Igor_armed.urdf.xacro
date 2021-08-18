@@ -177,7 +177,7 @@
 		<origin xyz="${0} ${0} ${base_z_size/2 + 0.015}" rpy="${M_PI/2} 0 0" />
 	</xacro:igor_actuator>
 	
-	<xacro:arm prefix="Upper" reflect="-1" flip="0" lower_limit="-3" upper_limit="3">
+	<xacro:arm prefix="Upper" reflect="-1" flip="0" lower_limit="0.78" upper_limit="0.78">
 		<origin xyz="${0} ${actuator_y_size/2+lower_leg_radius} ${0.0}" rpy="${-M_PI/2} ${0} ${0}" />
 	</xacro:arm>
 
@@ -186,7 +186,7 @@
 		<origin xyz="${lower_leg_length + actuator_z_size/2.3} ${0} -${actuator_y_size/1.2}" rpy="${M_PI/2} ${0} 0" />
 	</xacro:igor_actuator>
 	
-	<xacro:arm prefix="Fore" reflect="1" flip="1" lower_limit="-2.5" upper_limit="2.5">
+	<xacro:arm prefix="Fore" reflect="1" flip="1" lower_limit="-1.5708" upper_limit="-1.5708">
 		<origin xyz="${0} -${actuator_y_size/2+lower_leg_radius} 0.0" rpy="${-M_PI/2} ${0} ${0}" />
 	</xacro:arm>
 	
@@ -201,9 +201,9 @@
 	</xacro:my_hand>
 
 	<!--Pepsi Can  -->
-	<xacro:pepsi_can parent_link= "H1_base_link">
+	<!--xacro:pepsi_can parent_link= "H1_base_link">
 		<origin xyz="${0.0} ${0} ${0.062}" rpy="${0} ${0} ${0}" />
-	</xacro:pepsi_can>
+	</xacro:pepsi_can-->
 
 	
 	<!--Robot Center Dummy-->
